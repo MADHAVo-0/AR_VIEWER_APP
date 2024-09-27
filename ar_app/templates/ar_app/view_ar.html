@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Markerless AR Models</title>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #0d0d0d;
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            margin: 50px auto;
+            padding: 20px;
+            width: 80%;
+        }
+
+        .ar-container {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+
+        .ar-item {
+            width: 45%;
+            margin: 20px 0;
+        }
+
+        .card {
+            background: #1c1c1c;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease-in-out;
+            position: relative;
+        }
+
+        .card:hover {
+            box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2);
+        }
+
+        .fullscreen-btn,
+        .delete-btn {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.3s ease;
+        }
+
+        .fullscreen-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .delete-btn {
+            background-color: #ff4d4d;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+
+        .delete-btn:hover {
+            background-color: #cc0000;
+        }
+
+        model-viewer {
+            width: 100%;
+            height: 400px;
+            position: relative;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>Real-Time AR Models</h2>
+        <p>Use your device's camera or an external webcam to view 3D models in AR. If AR is not available, interact with the model in full-screen mode!</p>
+        <div class="ar-container">
+            {% for model in models %}
+            <div class="ar-item card">
+                <h3>{{ model.name }}</h3>
+                <model-viewer src="{{ model.glb_file.url }}" ar ar-scale="auto" camera-controls auto-rotate></model-viewer>
+                <button class="fullscreen-btn" onclick="enterAR(this)">View in AR / Fullscreen</button>
+                <button class="delete-btn" onclick="deleteModel('{{ model.id }}')">Delete</button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        // Check if WebXR/AR is supported on the device
+        function enterAR(button) {
+            const modelViewer = button.previousElementSibling;
+
+            // Check if AR is available
+            if (modelViewer.canActivateAR) {
+                // Engage AR if available
+                modelViewer.activateAR();
+            } else if (screenfull.isEnabled) {
+                // If AR is not available, use full-screen mode as fallback
+                screenfull.toggle(modelViewer);
+            } else {
+                alert("AR or Fullscreen is not supported on this device.");
+            }
+        }
+
+        // Function to handle model deletion
+        function deleteModel(modelId) {
+            if (confirm("Are you sure you want to delete this model?")) {
+                // Send a DELETE request to the server
+                fetch(`/delete-model/${modelId}/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json'
+                    }
+                }).then(response => {
+                    if (response.ok) {
+                        location.reload(); // Reload the page after successful deletion
+                    } else {
+                        alert("Failed to delete the model.");
+                    }
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // For smooth hover animations
+            const arItems = document.querySelectorAll('.ar-item');
+            arItems.forEach(item => {
+                item.addEventListener('mouseenter', () => {
+                    item.style.transform = 'scale(1.05)';
+                });
+                item.addEventListener('mouseleave', () => {
+                    item.style.transform = 'scale(1)';
+                });
+            });
+        });
+    </script>
+
+    <!-- Include model-viewer.js for rendering GLB models in AR -->
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+
+    <!-- Include screenfull.js for fullscreen fallback -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/screenfull.js/5.1.0/screenfull.min.js"></script>
+
+    <!-- Additional AR.js script for real-time AR with external webcams -->
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+    <script src="https://cdn.rawgit.com/jeromeetienne/AR.js/master/aframe/build/aframe-ar.js"></script>
+
+</body>
+
+</html>
